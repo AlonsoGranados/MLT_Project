@@ -34,7 +34,7 @@ def InfoGain(A_dim, kernel_A, sigma_noise):
     K_A = k(x, x'), x, x' in A
     '''
     
-    return 0.5 * np.log(np.add(np.eye(len(kernel_A)), (sigma_noise**2)*kernel_A))
+    return 0.5 * np.log(np.linalg.det(np.add(np.eye(len(kernel_A)), (sigma_noise**2)*kernel_A)))
 
 def MaxInfoGain(T, dimension):
     dimension = 8
