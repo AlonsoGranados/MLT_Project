@@ -4,6 +4,7 @@ from scipy.special import kv
 from scipy.special import gamma
 from sklearn.gaussian_process.kernels import Matern
 
+
 def rbf_kernel(X_p,X_q):
     X_p = np.reshape(X_p,(-1,1))
     X_q = np.reshape(X_q, (-1, 1))
@@ -25,6 +26,25 @@ def rbf_single(x,y):
     d = d * -1/2
     d = np.exp(d)
     return d
+
+
+def InfoGain(kernel_A, sigma_noise):
+    '''
+    I(y_A; f_A) = 1/2 * log * det( I + sigma**(-2)*K_A )
+    K_A = k(x, x'), x, x' in A
+    '''
+
+    return 0.5 * np.log(np.linalg.det(np.add(np.eye(len(kernel_A)), (sigma_noise ** -1) * kernel_A)))
+
+
+def greedy_information_gain(A,sigma):
+    gamma = []
+    # Compute kernel
+    for i in range(A.shape[0]):
+        K_A = rbf_kernel(A[:i+1],A[:i+1])
+        gamma.append(InfoGain(K_A,sigma))
+    return gamma
+
 
 def posterior_mean_cov_t(x,sigma,A_t,y_t):
     mu_t = np.zeros(x.shape[0])
@@ -57,7 +77,7 @@ def adaptive_B(t,D,delta):
     return B
 
 def GP_UCB(D, sigma,k,T,delta):
-    x = np.linspace(0,D*5,1000)
+    x = np.linspace(0,D*5,3000)
 
     X_star = np.reshape(x,(-1,1))
     mu_p = np.zeros(X_star.shape[0])
@@ -72,6 +92,7 @@ def GP_UCB(D, sigma,k,T,delta):
     mu_t = np.zeros(x.shape[0])
     sigma_t = np.ones(x.shape[0])
 
+    greedy_A = []
     B = []
     for t in range(T):
         B.append(adaptive_B(t,D,delta))
@@ -79,6 +100,7 @@ def GP_UCB(D, sigma,k,T,delta):
         index = np.argmax(values)
         # index = np.random.randint(1000)
 
+        greedy_A.append(x[np.argmax(sigma_t)])
         print(index)
         # f = np.random.normal(mu_t[index], sigma_t[index])
         f = f_star[index]
@@ -97,8 +119,8 @@ def GP_UCB(D, sigma,k,T,delta):
         #     plt.plot(values, label=t)
 
         if(t > 0):
-            # plt.plot(values)
-            plt.plot(mu_t)
+            plt.plot(values)
+            # plt.plot(mu_t)
 
         # print(mu_t.shape)
         # print(sigma_t.shape)
@@ -106,15 +128,21 @@ def GP_UCB(D, sigma,k,T,delta):
     plt.legend()
     plt.show()
 
+    greedy_A = np.array(greedy_A)
+    gamma = greedy_information_gain(greedy_A,sigma)
+    # print(gamma)
 
-    bound = np.arange(T)
+    bound = np.arange(T)+1
     C = 8/np.log(1 + 1/sigma)
     B = np.array(B)
-    gamma = 1
+    # gamma = 1
     bound = bound * B
     bound *= C
     bound *= gamma
+    print(np.e /(np.e -1))
+    bound *= (np.e /(np.e -1))
     bound = np.sqrt(bound)
+    # print(bound)
 
     R_t = np.array(R_t)
     plt.title('Cumulative Regret')
